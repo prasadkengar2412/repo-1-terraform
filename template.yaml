@@ -16,6 +16,10 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     Default: sg-0ba217fefff2539bf
 
+Mappings:
+  EnvironmentConfig:
+    dev:
+      SSMPathPrefix: "/development/TEST/"
 Resources:
 
   MyLambdaFunction:

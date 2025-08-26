@@ -26,6 +26,6 @@ Resources:
       EndpointConfiguration: 
         Type: PRIVATE
         VpcEndpointIds: 
-        - 'vpce-0ce322421773edf70'
+        - vpce-0888b20905d6f59e5
 
 

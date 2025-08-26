@@ -25,6 +25,7 @@ Resources:
       StageName: !Ref Environment
       EndpointConfiguration: 
         Type: PRIVATE
-        VpcEndpointIds: vpce-0ce322421773edf70
+        VpcEndpointIds: 
+        - vpce-0ce322421773edf70
 
 

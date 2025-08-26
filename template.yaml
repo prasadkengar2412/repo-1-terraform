@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Private API with VPC Endpoint example
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-093a5f04db74d3d38
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: subnet-0b2ed3cf13712f581
+  VpceSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-0ba217fefff2539bf
+
+Resources:
+
+  MyLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub my-private-api-lambda-${Environment}
+      Handler: index.handler
+      Runtime: nodejs18.x
+      CodeUri: ./src
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref VpceSecurityGroupId
+        SubnetIds: !Ref SubnetIds
+
+  PrivateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub my-private-api-${Environment}
+      StageName: !Ref Environment
+      EndpointConfiguration: PRIVATE
+      VpcEndpointIds:
+        - vpce-0ce322421773edf70
+
+

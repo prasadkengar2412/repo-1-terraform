@@ -27,5 +27,15 @@ Resources:
         Type: PRIVATE
         VpcEndpointIds: 
         - vpce-0888b20905d6f59e5
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource: execute-api:/*/*/*
+              Condition:
+                StringEquals:
+                  aws:SourceVpce: vpce-0888b20905d6f59e5
 
 

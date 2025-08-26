@@ -37,8 +37,8 @@ Resources:
     Properties:
       Name: !Sub my-private-api-${Environment}
       StageName: !Ref Environment
-      EndpointConfiguration: PRIVATE
-      VpcEndpointIds:
-        - vpce-0ce322421773edf70
+      EndpointConfiguration: 
+        Type: PRIVATE
+        VpcEndpointIds: vpce-0ce322421773edf70
 
 

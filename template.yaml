@@ -18,20 +18,6 @@ Parameters:
 
 Resources:
 
-  MyLambdaFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub my-private-api-lambda-${Environment}
-      Handler: index.handler
-      Runtime: nodejs18.x
-      CodeUri: ./src
-      Policies:
-        - AWSLambdaBasicExecutionRole
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref VpceSecurityGroupId
-        SubnetIds: !Ref SubnetIds
-
   PrivateApi:
     Type: AWS::Serverless::Api
     Properties:

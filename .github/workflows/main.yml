@@ -1,0 +1,42 @@
+name: Deploy SAM Private API
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sam-deploy:
+    name: Deploy SAM Stack
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install SAM CLI
+        run: |
+          sudo pip install --upgrade pip
+          pip install aws-sam-cli
+
+      - name: Build SAM application
+        run: sam build --use-container
+
+      - name: Deploy SAM stack
+        run: |
+          sam deploy \
+            --template-file template.yaml \
+            --stack-name my-private-api-stack \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --parameter-overrides Environment=dev \
+            --no-fail-on-empty-changeset
+
+          

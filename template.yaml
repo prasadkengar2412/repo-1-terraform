@@ -47,7 +47,9 @@ Resources:
       EndpointConfiguration: 
         Type: PRIVATE
         VpcEndpointIds: 
-        - vpce-0888b20905d6f59e5
+        - Fn::Sub:
+             - "{{resolve:ssm:${Prefix}VPCENDPOINT}}"
+             - { Prefix: !FindInMap [EnvironmentConfig, !Ref Environment, SSMPathPrefix] }
       Auth:
         ResourcePolicy:
           CustomStatements:

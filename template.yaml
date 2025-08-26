@@ -63,6 +63,9 @@ Resources:
               Resource: execute-api:/*/*/*
               Condition:
                 StringEquals:
-                  aws:SourceVpce: vpce-0888b20905d6f59e5
+                  aws:SourceVpce: 
+                    Fn::Sub:
+                       - "{{resolve:ssm:${Prefix}VPCENDPOINT}}"
+                       - { Prefix: !FindInMap [EnvironmentConfig, !Ref Environment, SSMPathPrefix] }
 
 

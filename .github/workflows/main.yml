@@ -51,6 +51,7 @@ jobs:
           fi
           echo "✅ App '$APP_NAME' found in apps.json"
 
+
       - name: Terraform Init
         run: |
           terraform init \

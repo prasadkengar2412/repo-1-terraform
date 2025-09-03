@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Private API with VPC Endpoint example
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-093a5f04db74d3d38
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: subnet-0b2ed3cf13712f581
+  VpceSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-0ba217fefff2539bf
+
+Mappings:
+  EnvironmentConfig:
+    dev:
+      SSMPathPrefix: "/development/TEST/"
+Resources:
+
+  MyLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub my-private-api-lambda-${Environment}
+      Handler: index.handler
+      Runtime: nodejs18.x
+      InlineCode: |
+        exports.handler = async (event) => {
+          return {
+            statusCode: 200,
+            body: JSON.stringify({ message: "Hello from Private API Lambda!" })
+          };
+        };
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PrivateApi
+            Path: /hello
+            Method: get
+            
+  PrivateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub my-private-api-${Environment}
+      StageName: !Ref Environment
+      EndpointConfiguration: 
+        Type: PRIVATE
+        VpcEndpointIds: 
+        - Fn::Sub:
+             - "{{resolve:ssm:${Prefix}VPCENDPOINT}}"
+             - { Prefix: !FindInMap [EnvironmentConfig, !Ref Environment, SSMPathPrefix] }
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource: execute-api:/*/*/*
+              Condition:
+                StringEquals:
+                  aws:SourceVpce: 
+                    Fn::Sub:
+                       - "{{resolve:ssm:${Prefix}VPCENDPOINT}}"
+                       - { Prefix: !FindInMap [EnvironmentConfig, !Ref Environment, SSMPathPrefix] }
+
+

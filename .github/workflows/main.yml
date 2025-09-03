@@ -1,41 +1,71 @@
-name: Deploy SAM Private API
+name: Terraform Client Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App name to deploy (must exist in apps.json)'
+        required: true
+        type: string
 
 jobs:
-  sam-deploy:
-    name: Deploy SAM Stack
+  terraform:
     runs-on: ubuntu-latest
-    environment: production
+    defaults:
+      run:
+        working-directory: Client-App/terraform
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.NON_PROD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NON_PROD_AWS_SECRET_ACCESS_KEY }}
+      TF_VAR_region: ${{ vars.REGION }}
+      TF_VAR_short_region: ${{ vars.SHORT_REGION }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - uses: actions/checkout@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
-      - name: Install SAM CLI
+      - name: Determine Environment from Branch
+        id: set-env
         run: |
-          pip install aws-sam-cli
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          case $BRANCH in
+            develop)  echo "TF_VAR_env=dev"  >> $GITHUB_ENV ;;
+            staging)  echo "TF_VAR_env=stg"  >> $GITHUB_ENV ;;
+            main)     echo "TF_VAR_env=prod" >> $GITHUB_ENV ;;
+            *) echo "Unsupported branch: $BRANCH"; exit 1 ;;
+          esac
+        shell: bash
 
-      - name: Build SAM application
-        run: sam build --use-container
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
 
-      - name: Deploy SAM stack
+      - name: Validate App Name from apps.json
         run: |
-          sam deploy \
-            --template-file template.yaml \
-            --stack-name my-private-api-stack \
-            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-            --parameter-overrides Environment=dev \
-            --no-fail-on-empty-changeset
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          if ! jq -e ".[] | select(.name == \"$APP_NAME\")" apps.json > /dev/null; then
+            echo "❌ Error: App '$APP_NAME' not found in apps.json"
+            exit 1
+          fi
+          echo "✅ App '$APP_NAME' found in apps.json"
 
-          
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=s3-ulng-clientapps-tfstate" \
+            -backend-config="key=cognito-app-clients/$TF_VAR_env/${{ github.event.inputs.app_name }}/terraform.tfstate" \
+            -backend-config="region=$TF_VAR_region"
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="env=$TF_VAR_env" \
+            -var="region=$TF_VAR_region" \
+            -var="app_name=${{ github.event.inputs.app_name }}" \
+            -out=plan.tfout
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve plan.tfout

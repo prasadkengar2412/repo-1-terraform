@@ -1,24 +1,71 @@
- - name: Setup Node.js environment
-  uses: actions/setup-node@v3.9.1
-  with:
-    # Set always-auth in npmrc.
-    always-auth: # optional, default is false
-    # Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0.
-    node-version: # optional
-    # File containing the version Spec of the version to use.  Examples: .nvmrc, .node-version, .tool-versions.
-    node-version-file: # optional
-    # Target architecture for Node to use. Examples: x86, x64. Will use system architecture by default.
-    architecture: # optional
-    # Set this option if you want the action to check for the latest available version that satisfies the version spec.
-    check-latest: # optional
-    # Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN.
-    registry-url: # optional
-    # Optional scope for authenticating against scoped registries. Will fall back to the repository owner when using the GitHub Packages registry (https://npm.pkg.github.com/).
-    scope: # optional
-    # Used to pull node distributions from node-versions. Since there's a default, this is typically not supplied by the user. When running this action on github.com, the default value is sufficient. When running on GHES, you can pass a personal access token for github.com if you are experiencing rate limiting.
-    token: # optional, default is ${{ github.server_url == 'https://github.com' && github.token || '' }}
-    # Used to specify a package manager for caching in the default directory. Supported values: npm, yarn, pnpm.
-    cache: # optional
-    # Used to specify the path to a dependency file: package-lock.json, yarn.lock, etc. Supports wildcards or a list of file names for caching multiple dependencies.
-    cache-dependency-path: # optional
-          
+name: Terraform Client Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App name to deploy (must exist in apps.json)'
+        required: true
+        type: string
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Client-App/terraform
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.NON_PROD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NON_PROD_AWS_SECRET_ACCESS_KEY }}
+      TF_VAR_region: ${{ vars.REGION }}
+      TF_VAR_short_region: ${{ vars.SHORT_REGION }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Determine Environment from Branch
+        id: set-env
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          case $BRANCH in
+            develop)  echo "TF_VAR_env=dev"  >> $GITHUB_ENV ;;
+            staging)  echo "TF_VAR_env=stg"  >> $GITHUB_ENV ;;
+            main)     echo "TF_VAR_env=prod" >> $GITHUB_ENV ;;
+            *) echo "Unsupported branch: $BRANCH"; exit 1 ;;
+          esac
+        shell: bash
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Validate App Name from apps.json
+        run: |
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          if ! jq -e ".[] | select(.name == \"$APP_NAME\")" apps.json > /dev/null; then
+            echo "❌ Error: App '$APP_NAME' not found in apps.json"
+            exit 1
+          fi
+          echo "✅ App '$APP_NAME' found in apps.json"
+
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=s3-ulng-clientapps-tfstate" \
+            -backend-config="key=cognito-app-clients/$TF_VAR_env/${{ github.event.inputs.app_name }}/terraform.tfstate" \
+            -backend-config="region=$TF_VAR_region"
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="env=$TF_VAR_env" \
+            -var="region=$TF_VAR_region" \
+            -var="app_name=${{ github.event.inputs.app_name }}" \
+            -out=plan.tfout
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve plan.tfout

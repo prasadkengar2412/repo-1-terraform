@@ -60,7 +60,7 @@ jobs:
       run: |
         terraform init \
           -backend-config="bucket=terraform-state-test-cognito" \
-          -backend-config="key=cognito-app-clients/$TF_VAR_env/terraform.tfstate" \
+          -backend-config="key=cognito-m2m/$TF_VAR_env/terraform.tfstate" \
           -backend-config="region=$TF_VAR_region"
 
     - name: Terraform Plan

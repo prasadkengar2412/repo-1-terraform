@@ -69,10 +69,6 @@ resource "aws_cognito_user_pool_client" "apps" {
   callback_urls = lookup(each.value, "redirect_urls", [])
   logout_urls   = lookup(each.value, "logout_urls", [])
 
-  access_token_validity  = lookup(each.value, "access_token_validity", null) != null ? lookup(each.value.access_token_validity, "value", 1) : 1
-  id_token_validity      = lookup(each.value, "id_token_validity", null) != null ? lookup(each.value.id_token_validity, "value", 1) : 1
-  refresh_token_validity = lookup(each.value, "refresh_token_validity", null) != null ? lookup(each.value.refresh_token_validity, "value", 30) : 30
-
   lifecycle {
     create_before_destroy = true
   }

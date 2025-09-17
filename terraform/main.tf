@@ -28,7 +28,7 @@ data "aws_ssm_parameter" "userpool_id" {
 locals {
   user_pool_id = data.aws_ssm_parameter.userpool_id.value
 
-  apps_json = jsondecode(file("${path.root}/${var.env}/apps.json"))
+  apps_json = jsondecode(file("${path.root}/../${var.env}/apps.json"))
   apps_map  = { for c in local.apps_json : c.name => c }
 
   customscope_file = "${path.module}/customscope.json"

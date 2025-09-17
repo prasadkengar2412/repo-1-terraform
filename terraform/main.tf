@@ -59,8 +59,6 @@ resource "aws_cognito_user_pool_client" "apps" {
 
   generate_secret = true
   allowed_oauth_flows_user_pool_client = true
-  explicit_auth_flows = ["ALLOW_CLIENT_CREDENTIALS"]
-
   allowed_oauth_flows = ["client_credentials"]
 
   allowed_oauth_scopes = concat(
@@ -79,6 +77,7 @@ resource "aws_cognito_user_pool_client" "apps" {
     create_before_destroy = true
   }
 }
+
 
 # --- Secrets Manager per client ---
 resource "aws_secretsmanager_secret" "apps" {

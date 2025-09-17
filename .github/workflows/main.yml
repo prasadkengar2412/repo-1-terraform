@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - main
+      - maint
       - 'release/**'
   release:
     types: [published] 

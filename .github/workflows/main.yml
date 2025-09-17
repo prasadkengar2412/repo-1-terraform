@@ -1,71 +1,74 @@
-name: Terraform Client Deploy
+name: Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      app_name:
-        description: 'App name to deploy (must exist in apps.json)'
-        required: true
-        type: string
+  push:
+    branches:
+      - main
+      - 'release/**'
+  release:
+    types: [published] 
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_type == 'branch' && github.ref_name == 'main' && 'develop' || (startsWith(github.ref_name, 'release/') && 'staging' || 'production') }}
     defaults:
       run:
-        working-directory: Client-App/terraform
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.NON_PROD_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.NON_PROD_AWS_SECRET_ACCESS_KEY }}
-      TF_VAR_region: ${{ vars.REGION }}
-      TF_VAR_short_region: ${{ vars.SHORT_REGION }}
-
+        working-directory: terraform
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
-
-      - name: Determine Environment from Branch
-        id: set-env
-        run: |
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          case $BRANCH in
-            develop)  echo "TF_VAR_env=dev"  >> $GITHUB_ENV ;;
-            staging)  echo "TF_VAR_env=stg"  >> $GITHUB_ENV ;;
-            main)     echo "TF_VAR_env=prod" >> $GITHUB_ENV ;;
-            *) echo "Unsupported branch: $BRANCH"; exit 1 ;;
-          esac
-        shell: bash
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-
-      - name: Validate App Name from apps.json
-        run: |
-          APP_NAME="${{ github.event.inputs.app_name }}"
-          if ! jq -e ".[] | select(.name == \"$APP_NAME\")" apps.json > /dev/null; then
-            echo "❌ Error: App '$APP_NAME' not found in apps.json"
-            exit 1
+    - uses: actions/checkout@v4
+    - name: Determine environment and set variables
+      id: set-vars
+      run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "TF_VAR_region=${{ vars.REGION }}" >> $GITHUB_ENV
+            echo "TF_VAR_short_region=${{ vars.SHORT_REGION }}" >> $GITHUB_ENV
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          elif [[ "${{ github.ref_name }}" == release/* ]]; then
+            echo "ENVIRONMENT=stg" >> $GITHUB_ENV
+            echo "TF_VAR_region=${{ vars.REGION }}" >> $GITHUB_ENV
+            echo "TF_VAR_short_region=${{ vars.SHORT_REGION }}" >> $GITHUB_ENV
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "TF_VAR_region=${{ vars.REGION }}" >> $GITHUB_ENV
+            echo "TF_VAR_short_region=${{ vars.SHORT_REGION }}" >> $GITHUB_ENV
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
           fi
-          echo "✅ App '$APP_NAME' found in apps.json"
+    - name: Set TF VAR Environment
+      id: set-env
+      run: |
+         echo "TF_VAR_env=$ENVIRONMENT" >> $GITHUB_ENV 
+         echo "Environment set to: $TF_VAR_env"
 
+    - name: Upgrade AWS CLI v2
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip -q awscliv2.zip
+        sudo ./aws/install --update
+        /usr/local/bin/aws --version
 
-      - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="bucket=s3-ulng-clientapps-tfstate" \
-            -backend-config="key=cognito-app-clients/$TF_VAR_env/${{ github.event.inputs.app_name }}/terraform.tfstate" \
-            -backend-config="region=$TF_VAR_region"
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
 
-      - name: Terraform Plan
-        run: |
-          terraform plan \
-            -var="env=$TF_VAR_env" \
-            -var="region=$TF_VAR_region" \
-            -var="app_name=${{ github.event.inputs.app_name }}" \
-            -out=plan.tfout
+    - name: Terraform Init
+      run: |
+        terraform init \
+          -backend-config="bucket=terraform-state-test-cognito" \
+          -backend-config="key=cognito-app-clients/$TF_VAR_env/terraform.tfstate" \
+          -backend-config="region=$TF_VAR_region"
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve plan.tfout
+    - name: Terraform Plan
+      run: |
+        terraform plan \
+          -var="env=$TF_VAR_env" \
+          -var="region=$TF_VAR_region" \
+          -out=plan.tfout
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve plan.tfout

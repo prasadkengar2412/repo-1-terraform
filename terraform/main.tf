@@ -87,8 +87,8 @@ resource "aws_secretsmanager_secret_version" "apps" {
   secret_id = aws_secretsmanager_secret.apps[each.key].id
 
   secret_string = jsonencode({
-    clientid         = aws_cognito_user_pool_client.apps[each.key].client_id
-    clientsecret     = aws_cognito_user_pool_client.apps[each.key].client_secret
+    client_id        = aws_cognito_user_pool_client.apps[each.key].id
+    client_secret    = aws_cognito_user_pool_client.apps[each.key].client_secret
     authorizedscopes = aws_cognito_user_pool_client.apps[each.key].allowed_oauth_scopes
   })
 }

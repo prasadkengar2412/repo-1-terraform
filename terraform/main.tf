@@ -31,7 +31,7 @@ locals {
   apps_json = jsondecode(file("${path.root}/../${var.env}/apps.json"))
   apps_map  = { for c in local.apps_json : c.name => c }
 
-  customscope_file = "${path.module}/customscope.json"
+  customscope_file = "${path.module}/../customescope.json"
   customscopes     = fileexists(local.customscope_file) ? jsondecode(file(local.customscope_file)) : []
 }
 

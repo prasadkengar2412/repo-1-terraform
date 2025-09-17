@@ -14,9 +14,9 @@ provider "aws" {
 # Pick UserPoolId SSM path dynamically
 locals {
   ssm_path = (
-    var.env == "dev"  ? "/development/ULHH/UserpoolId" :
-    var.env == "stg"  ? "/staging/ULHH/UserpoolId" :
-    var.env == "prod" ? "/production/ULHH/UserpoolId" :
+    var.env == "dev"  ? "/development/ULNG/UserPoolId" :
+    var.env == "stg"  ? "/staging/ULNG/UserPoolId" :
+    var.env == "prod" ? "/production/ULNG/UserPoolId" :
     ""
   )
 }

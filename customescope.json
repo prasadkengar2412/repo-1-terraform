@@ -1,0 +1,12 @@
+[
+  {
+    "identifier": "Ufo.API",
+    "name": "Ufo API",
+    "scopes": ["details"]
+  },
+  {
+    "identifier": "MPFI.API",
+    "name": "MPFI API",
+    "scopes": ["synccontact"]
+  }
+]

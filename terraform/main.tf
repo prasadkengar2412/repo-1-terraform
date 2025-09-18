@@ -33,14 +33,14 @@ locals {
   apps_json = jsondecode(file("${path.root}/../${var.env}/apps.json"))
   apps_map  = { for c in local.apps_json : c.name => c }
 
-  # Load customescope.json if it exists
+  # Load customscopes.json if it exists
   customscope_file = "${path.root}/../customescope.json"
   customscopes     = fileexists(local.customscope_file) ? jsondecode(file(local.customscope_file)) : []
 }
 
 # --- Create Resource Servers + Scopes ---
 resource "aws_cognito_resource_server" "servers" {
-  for_each    = { for srv in local.customscopes : srv.identifier => srv }
+  for_each     = { for srv in local.customscopes : srv.identifier => srv }
   user_pool_id = local.user_pool_id
   identifier   = each.value.identifier
   name         = each.value.name
@@ -90,22 +90,22 @@ resource "aws_cognito_user_pool_client" "apps" {
   }
 }
 
-
 # --- Secrets Manager per App Client ---
 resource "aws_secretsmanager_secret" "apps" {
-  for_each = aws_cognito_user_pool_client.apps
+  for_each = local.apps_map
   name     = "ulng-m2m--secrets-${each.value.client_type}-${var.env}-${each.key}"
 }
 
 resource "aws_secretsmanager_secret_version" "apps" {
-  for_each = aws_cognito_user_pool_client.apps
+  for_each = local.apps_map
 
   secret_id = aws_secretsmanager_secret.apps[each.key].id
 
   secret_string = jsonencode({
-    clientid         = aws_cognito_user_pool_client.apps[each.key].client_id
-    clientsecret     = aws_cognito_user_pool_client.apps[each.key].client_secret
+    client_id        = aws_cognito_user_pool_client.apps[each.key].id
+    client_secret    = aws_cognito_user_pool_client.apps[each.key].client_secret
     authorizedscopes = aws_cognito_user_pool_client.apps[each.key].allowed_oauth_scopes
+    client_type      = each.value.client_type
   })
 }
 
@@ -133,4 +133,16 @@ resource "null_resource" "secret_cleanup" {
   }
 
   depends_on = [aws_secretsmanager_secret.apps]
+}
+
+# --- Outputs ---
+output "m2m_client_ids" {
+  description = "Cognito Client IDs for all M2M apps"
+  value       = { for k, v in aws_cognito_user_pool_client.apps : k => v.id }
+}
+
+output "m2m_client_secrets" {
+  description = "Cognito Client Secrets for all M2M apps"
+  sensitive   = true
+  value       = { for k, v in aws_cognito_user_pool_client.apps : k => v.client_secret }
 }

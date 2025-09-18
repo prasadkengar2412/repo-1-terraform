@@ -4,5 +4,11 @@
     "client_type": "internal",
     "custom_scopes": ["MPFI.API/synccontact", "Ufo.API/details"],
     "access_token_validity": { "value": 120, "unit": "minutes" }
+  },
+{
+    "name": "ukid",
+    "client_type": "internal",
+    "custom_scopes": [],
+    "access_token_validity": { "value": 120, "unit": "minutes" }
   }
 ]

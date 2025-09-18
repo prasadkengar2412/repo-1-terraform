@@ -8,8 +8,6 @@ terraform {
 
   backend "s3" {
     bucket = "terraform-state-test-cognito"
-    key    = "cognito/m2m-apps.tfstate"
-    region = "us-east-1"
   }
 }
 
@@ -57,7 +55,7 @@ resource "aws_cognito_resource_server" "servers" {
 # --- Create M2M App Clients ---
 resource "aws_cognito_user_pool_client" "apps" {
   for_each     = local.apps_map
-  name         = "ulng-appclient-${each.value.name}-${each.value.client_type}-${var.env}"
+  name         = "ulng-m2mclient-${each.value.name}-${each.value.client_type}-${var.env}"
   user_pool_id = local.user_pool_id
 
   generate_secret                      = true
@@ -93,7 +91,7 @@ resource "aws_cognito_user_pool_client" "apps" {
 # --- Secrets Manager per App Client ---
 resource "aws_secretsmanager_secret" "apps" {
   for_each = local.apps_map
-  name     = "ulng-m2m--secrets-${each.value.client_type}-${var.env}-${each.key}"
+  name     = "ulng-m2mclient-${each.value.name}-secrets-${each.value.client_type}-${var.env}"
 }
 
 resource "aws_secretsmanager_secret_version" "apps" {

@@ -83,7 +83,7 @@ resource "aws_cognito_user_pool_client" "apps" {
     refresh_token = lookup(each.value.refresh_token_validity, "unit", "days")
   }
   depends_on = [
-    aws_cognito_resource_server.custom_scopes
+    aws_cognito_resource_server.servers
   ]
   lifecycle {
     create_before_destroy = true

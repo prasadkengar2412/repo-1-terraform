@@ -1,6 +1,6 @@
 [
   {
-    "name": "ulng-m2m-internal-dev",
+    "name": "fonteva",
     "client_type": "internal",
     "custom_scopes": ["MPFI.API/synccontact", "Ufo.API/details"],
     "access_token_validity": { "value": 120, "unit": "minutes" }

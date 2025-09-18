@@ -72,23 +72,24 @@ resource "aws_cognito_user_pool_client" "apps" {
   callback_urls = []
   logout_urls   = []
 
-  # Token validity (from apps.json)
-  access_token_validity  = lookup(each.value.access_token_validity, "value", 60)
-  id_token_validity      = lookup(each.value.id_token_validity, "value", 60)
-  refresh_token_validity = lookup(each.value.refresh_token_validity, "value", 30)
+  # Token validity with safe defaults
+  access_token_validity  = try(each.value.access_token_validity.value, 60)
+  id_token_validity      = try(each.value.id_token_validity.value, 60)
+  refresh_token_validity = try(each.value.refresh_token_validity.value, 30)
 
   token_validity_units {
-    access_token  = lookup(each.value.access_token_validity, "unit", "minutes")
-    id_token      = lookup(each.value.id_token_validity, "unit", "minutes")
-    refresh_token = lookup(each.value.refresh_token_validity, "unit", "days")
+    access_token  = try(each.value.access_token_validity.unit, "minutes")
+    id_token      = try(each.value.id_token_validity.unit, "minutes")
+    refresh_token = try(each.value.refresh_token_validity.unit, "days")
   }
-  depends_on = [
-    aws_cognito_resource_server.servers
-  ]
+
+  depends_on = [aws_cognito_resource_server.servers]
+
   lifecycle {
     create_before_destroy = true
   }
 }
+
 
 # --- Secrets Manager per App Client ---
 resource "aws_secretsmanager_secret" "apps" {

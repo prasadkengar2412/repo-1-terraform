@@ -30,11 +30,11 @@ locals {
   user_pool_id = data.aws_ssm_parameter.user_pool_id.value
 
   # Load apps.json for environment
-  apps_json = jsondecode(file("${path.root}/${var.env}/apps.json"))
+  apps_json = jsondecode(file("${path.root}/../${var.env}/apps.json"))
   apps_map  = { for c in local.apps_json : c.name => c }
 
   # Load customescope.json if it exists
-  customscope_file = "${path.root}/customescope.json"
+  customscope_file = "${path.root}/../customescope.json"
   customscopes     = fileexists(local.customscope_file) ? jsondecode(file(local.customscope_file)) : []
 }
 

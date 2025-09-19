@@ -58,8 +58,13 @@ jobs:
 
     - name: Terraform Init
       run: |
+        if [ "$TF_VAR_env" = "prod" ]; then
+          BUCKET="s3-ulng-clientapps-tfstate-prod"  # Use your new prod bucket name
+        else
+          BUCKET="terraform-state-test-cognito"  # Existing bucket for dev/stg
+        fi
         terraform init \
-          -backend-config="bucket=terraform-state-test-cognito" \
+          -backend-config="bucket=$BUCKET" \
           -backend-config="key=cognito-m2m/$TF_VAR_env/terraform.tfstate" \
           -backend-config="region=$TF_VAR_region"
 
